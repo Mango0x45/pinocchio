@@ -106,6 +106,5 @@ void
 yyerror(const char *s)
 {
 	/* TODO: Get filename */
-	fprintf(stderr, "pinocchio: -:%d: %s\n", yylloc.first_line, s);
-	exit(EXIT_FAILURE);
+	errx(1, "-:%d: %s\n", yylloc.first_line, s);
 }
