@@ -1,0 +1,5 @@
+*.o
+*.output
+lexer.[ch]
+parser.[ch]
+pinocchio
