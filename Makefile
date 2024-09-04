@@ -3,6 +3,9 @@
 MAKEFLAGS = -j8
 
 S = src
+P = $(DESTDIR)$(PREFIX)
+
+PREFIX = /usr/local
 CFLAGS = -O3 -march=native -mtune=native -pipe -Wall -Wextra -Wpedantic
 
 target = pinocchio
@@ -24,3 +27,7 @@ $S/parser.c $S/parser.h: $S/parser.y
 
 clean:
 	rm -f $$(git ls-files -oi --exclude-standard)
+
+install:
+	mkdir -p $P/bin
+	cp $(target) $P/bin
