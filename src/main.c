@@ -1,6 +1,8 @@
 #include <ctype.h>
 #include <err.h>
+#include <getopt.h>
 #include <langinfo.h>
+#include <libgen.h>
 #include <locale.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -22,6 +24,7 @@
 static int rv;
 static bool interactive, utf8;
 
+bool lflag;
 const char *current_file;
 
 static bool eqnsolve(eqn_t *, uint64_t, uint64_t);
@@ -44,28 +47,48 @@ popcnt(uint64_t n)
 int
 main(int argc, char **argv)
 {
+	argv[0] = basename(argv[0]);
 	setlocale(LC_ALL, "");
 	utf8 = strcmp(nl_langinfo(CODESET), "UTF-8") == 0;
 	interactive = isatty(STDIN_FILENO);
 
-	if (argc == 1) {
+	int opt;
+	static struct option longopts[] = {
+		{"latex", no_argument, 0, 'l'},
+		{0},
+	};
+
+	while ((opt = getopt_long(argc, argv, "l", longopts, NULL)) != -1) {
+		switch (opt) {
+		case 'l':
+			lflag = true;
+			break;
+		default:
+			fprintf(stderr, "Usage: %s [-l] [file ...]\n", argv[0]);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+
+	if (argc == 0) {
 		current_file = "-";
 		for (;;) {
-			int ret = yyparse();
-			if (ret == 0)
+			if (yyparse() == 0)
 				break;
 			rv = EXIT_FAILURE;
 		}
-	} else for (int i = 1; i < argc; i++) {
+	} else for (int i = 0; i < argc; i++) {
 		if (strcmp(argv[i], "-") == 0)
 			yyin = stdin;
 		else if ((yyin = fopen(argv[i], "r")) == NULL) {
-			warn("fopen: %s", argv[1]);
+			warn("fopen: %s", argv[i]);
 			rv = EXIT_FAILURE;
 			continue;
 		}
 
-		current_file = argv[1];
+		current_file = argv[i];
 		yyparse();
 		fclose(yyin);
 	}
@@ -74,11 +97,8 @@ main(int argc, char **argv)
 }
 
 void
-astprocess(ast_t a)
+astprocess_cli(ast_t a)
 {
-	if (a.eqn == NULL)
-		return;
-
 	enum {
 		TBLVBAR,
 		TBLHBAR,
@@ -127,6 +147,38 @@ astprocess(ast_t a)
 	eqnfree(a.eqn);
 }
 
+void
+astprocess_latex(ast_t a)
+{
+	fputs("\\begin{displaymath}\n\t\\begin{array}{|", stdout);
+	int varcnt = popcnt(a.vars);
+	for (int i = 0; i < varcnt; i++) {
+		if (i == 0)
+			putchar('c');
+		else
+			fputs(" c", stdout);
+	}
+	fputs("|c|}\n\t\t", stdout);
+
+	for (int i = 0; i < MAXVARS; i++) {
+		if ((a.vars & UINT64_C(1)<<i) != 0)
+			printf("%c & ", i < 26 ? i + 'A' : i + 'a' - 26);
+	}
+
+	(void)eqnprint(a.eqn);
+	puts("\\\\\n\t\t\\hline");
+
+	for (uint64_t msk = 0; msk < (UINT64_C(1) << varcnt); msk++) {
+		fputs("\t\t", stdout);
+		for (int i = varcnt; i --> 0;)
+			printf("%d & ", (bool)(msk & UINT64_C(1)<<i));
+		printf("%d\\\\\n", eqnsolve(a.eqn, a.vars, msk));
+	}
+
+	puts("\t\\end{array}\n\\end{displaymath}");
+
+	eqnfree(a.eqn);
+}
 
 bool
 eqnsolve(eqn_t *e, uint64_t vars, uint64_t msk)
@@ -185,8 +237,19 @@ eqnprint(eqn_t *a)
 		[IMPL  - NOT] = {"=>",  2},
 		[EQUIV - NOT] = {"<=>", 3},
 	};
+	static const sym_t symbols_latex[] = {
+		[NOT   - NOT] = {"\\lnot ",   -1},
+		[OR    - NOT] = {"\\lor",     -1},
+		[AND   - NOT] = {"\\land",    -1},
+		[XOR   - NOT] = {"\\oplus",   -1},
+		[IMPL  - NOT] = {"\\implies", -1},
+		[EQUIV - NOT] = {"\\iff",     -1},
+	};
 
-	const sym_t *symtab = utf8 ? symbols_utf8 : symbols_ascii;
+	const sym_t *symtab
+		= lflag ? symbols_latex
+		: utf8  ? symbols_utf8
+		:         symbols_ascii;
 
 	switch (a->type) {
 	case IDENT:

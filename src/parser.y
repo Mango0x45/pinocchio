@@ -11,6 +11,7 @@ static ast_t astmerge(int, ast_t, ast_t);
 static void *xmalloc(size_t);
 static void yyerror(const char *);
 
+extern bool lflag;
 extern const char *current_file;
 %}
 
@@ -44,7 +45,10 @@ extern const char *current_file;
 
 input
 	: %empty
-	| input line { astprocess($2); }
+	| input line {
+		if ($2.eqn != NULL)
+			(lflag ? astprocess_latex : astprocess_cli)($2);
+	}
 	;
 
 line
