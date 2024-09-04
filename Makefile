@@ -2,24 +2,25 @@
 
 MAKEFLAGS = -j8
 
+S = src
 CFLAGS = -O3 -march=native -mtune=native -pipe -Wall -Wextra -Wpedantic
 
 target = pinocchio
-objs = src/lexer.o src/main.o src/parser.o src/wrapper.o
+objs = $S/lexer.o $S/main.o $S/parser.o $S/wrapper.o
 
 all: $(target)
 $(target): $(objs)
 	$(CC) $(CFLAGS) -o $@ $(objs)
 
-src/lexer.o:  src/lexer.c src/lexer.h src/parser.h
-src/main.o:   src/main.c src/lexer.h src/parser.h src/pinocchio.h
-src/parser.o: src/parser.c src/lexer.h src/parser.h src/pinocchio.h
+$S/lexer.o:  $S/lexer.c  $S/lexer.h $S/parser.h
+$S/main.o:   $S/main.c   $S/lexer.h $S/parser.h $S/pinocchio.h $S/wrapper.h
+$S/parser.o: $S/parser.c $S/lexer.h $S/parser.h $S/pinocchio.h $S/wrapper.h
 
-src/lexer.c src/lexer.h: src/lexer.l
-	flex --header-file=src/lexer.h -o src/lexer.c $<
+$S/lexer.c $S/lexer.h: $S/lexer.l
+	flex --header-file=$S/lexer.h -o $S/lexer.c $<
 
-src/parser.c src/parser.h: src/parser.y
-	bison -dvo src/parser.c $<
+$S/parser.c $S/parser.h: $S/parser.y
+	bison -dvo $S/parser.c $<
 
 clean:
 	rm -f $$(git ls-files -oi --exclude-standard)
