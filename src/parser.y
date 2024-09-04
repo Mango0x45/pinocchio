@@ -30,10 +30,10 @@ extern const char *current_file;
 /* Very important that NOT is the first token declared!  Code depends on it. */
 
 %start input
-%type  <ast> line exp
-%token <ast> NOT AND OR XOR IMPL EQUIV OPAR CPAR
-%token <ch>  IDENT
-%token EOL
+%token NOT AND OR XOR IMPL
+%token EQUIV OPAR CPAR EOL
+%token<ch> IDENT
+%type<ast> line exp
 
 %left OR
 %left AND
