@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "lexer.h"
@@ -72,13 +73,15 @@ main(int argc, char **argv)
 	interactive = isatty(STDIN_FILENO);
 
 	int opt;
+	const char *sflag = NULL;
 	static struct option longopts[] = {
 		{"bool-style",  required_argument, 0, 'b'},
+		{"string",      required_argument, 0, 's'},
 		{"table-style", required_argument, 0, 't'},
 		{0},
 	};
 
-	while ((opt = getopt_long(argc, argv, "b:t:", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "b:s:t:", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'b':
 			if (streq(optarg, "alpha"))
@@ -91,6 +94,9 @@ main(int argc, char **argv)
 				warnx("invalid bool style -- '%s'", optarg);
 				goto usage;
 			}
+			break;
+		case 's':
+			sflag = optarg;
 			break;
 		case 't':
 			if (streq(optarg, "ascii"))
@@ -106,8 +112,10 @@ main(int argc, char **argv)
 			break;
 		default:
 usage:
-			fprintf(stderr, "Usage: %s [-b alpha|binary|symbols] [-t ascii|latex|utf8] [file ...]\n",
-				argv[0]);
+			fprintf(stderr,
+				"Usage: %s [-b alpha|binary|symbols] [-t ascii|latex|utf8] [file ...]\n"
+				"       %s [-b alpha|binary|symbols] [-t ascii|latex|utf8] -s string\n",
+				argv[0], argv[0]);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -120,7 +128,16 @@ usage:
 	argc -= optind;
 	argv += optind;
 
+	if (sflag != NULL && argc != 0)
+		goto usage;
+
 	if (argc == 0) {
+		if (sflag != NULL &&
+			(yyin = fmemopen((char *)sflag, strlen(sflag), "r")) == NULL)
+		{
+			err(1, "fmemopen");
+		}
+
 		current_file = "-";
 		for (;;) {
 			if (yyparse() == 0)
