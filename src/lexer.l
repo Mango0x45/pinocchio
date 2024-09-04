@@ -1,13 +1,18 @@
 %option noinput
 %option nounput
 %option noyywrap
+%option yylineno
 
 %{
 #include <err.h>
+#include <stdlib.h>
 
 #include "parser.h"
+#include "pinocchio.h"
 
 #define YY_USER_ACTION yylloc.first_line = yylloc.last_line = yylineno;
+
+extern const char *current_file;
 %}
 
 %%
@@ -20,7 +25,7 @@
 \<=>|⇔  { return EQUIV; }
 \(      { return OPAR;  }
 \)      { return CPAR;  }
-\n      { return EOL;   } /* Only eat one NL for better interactive usage */
+\n      { return EOL;   }
 [a-zA-Z] {
 	yylval.ch = *yytext;
 	return IDENT;
@@ -28,7 +33,9 @@
 
 [ \t]+ ;
 
-	/* TODO: Swap ‘-’ for name of the input file */
-. { errx(1, "%s:%d: Unrecognized character ‘%c’", "-", yylineno, *yytext); }
+. {
+	user_error("%s:%d: Unrecognized character ‘%c’",
+		current_file, yylineno, *yytext);
+}
 
 %%

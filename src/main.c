@@ -2,11 +2,13 @@
 #include <err.h>
 #include <langinfo.h>
 #include <locale.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "lexer.h"
 #include "parser.h"
@@ -17,7 +19,10 @@
 #	define __has_builtin(x) (0)
 #endif
 
-static bool utf8;
+static int rv;
+static bool interactive, utf8;
+
+const char *current_file;
 
 static bool eqnsolve(eqn_t *, uint64_t, uint64_t);
 static int  eqnprint(eqn_t *);
@@ -41,11 +46,31 @@ main(int argc, char **argv)
 {
 	setlocale(LC_ALL, "");
 	utf8 = strcmp(nl_langinfo(CODESET), "UTF-8") == 0;
-	if (argc > 1) {
-		if ((yyin = fopen(argv[1], "r")) == NULL)
-			err(1, "fopen: %s", argv[1]);
+	interactive = isatty(STDIN_FILENO);
+
+	if (argc == 1) {
+		current_file = "-";
+		for (;;) {
+			int ret = yyparse();
+			if (ret == 0)
+				break;
+			rv = EXIT_FAILURE;
+		}
+	} else for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "-") == 0)
+			yyin = stdin;
+		else if ((yyin = fopen(argv[i], "r")) == NULL) {
+			warn("fopen: %s", argv[1]);
+			rv = EXIT_FAILURE;
+			continue;
+		}
+
+		current_file = argv[1];
+		yyparse();
+		fclose(yyin);
 	}
-	return yyparse();
+
+	return rv;
 }
 
 void
@@ -203,4 +228,17 @@ eqnfree(eqn_t *e)
 		eqnfree(e->rhs);
 	}
 	free(e);
+}
+
+void
+user_error(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vwarnx(fmt, ap);
+	va_end(ap);
+	if (interactive)
+		rv = EXIT_FAILURE;
+	else
+		exit(EXIT_FAILURE);
 }

@@ -10,6 +10,8 @@
 static ast_t astmerge(int, ast_t, ast_t);
 static void *xmalloc(size_t);
 static void yyerror(const char *);
+
+extern const char *current_file;
 %}
 
 %code requires {
@@ -105,6 +107,5 @@ xmalloc(size_t n)
 void
 yyerror(const char *s)
 {
-	/* TODO: Get filename */
-	errx(1, "-:%d: %s\n", yylloc.first_line, s);
+	user_error("%s:%d: %s", current_file, yylloc.first_line, s);
 }

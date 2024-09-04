@@ -20,5 +20,10 @@ typedef struct {
 } ast_t;
 
 void astprocess(ast_t);
+void user_error(const char *, ...)
+#if __GNUC__
+	__attribute__((format(printf, 1, 2)))
+#endif
+	;
 
 #endif /* !PINOCCIO_H */
