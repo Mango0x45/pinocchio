@@ -30,13 +30,13 @@ typedef enum {
 
 typedef enum {
 	BS_ALPHA,
-	BS_DIGITS,
+	BS_BINARY,
 	BS_SYMBOLS,
 } bool_style_t;
 
 static int rv;
 static bool interactive;
-static bool_style_t bflag = BS_DIGITS;
+static bool_style_t bflag = BS_BINARY;
 static tbl_style_t tflag = TS_UNSET;
 
 const char *current_file;
@@ -79,8 +79,8 @@ main(int argc, char **argv)
 		case 'b':
 			if (strcmp(optarg, "alpha") == 0)
 				bflag = BS_ALPHA;
-			else if (strcmp(optarg, "digits") == 0)
-				bflag = BS_DIGITS;
+			else if (strcmp(optarg, "binary") == 0)
+				bflag = BS_BINARY;
 			else if (strcmp(optarg, "symbols") == 0)
 				bflag = BS_SYMBOLS;
 			else {
@@ -102,7 +102,7 @@ main(int argc, char **argv)
 			break;
 		default:
 usage:
-			fprintf(stderr, "Usage: %s [-b alpha|digits|symbols] [-t ascii|latex|utf8] [file ...]\n",
+			fprintf(stderr, "Usage: %s [-b alpha|binary|symbols] [-t ascii|latex|utf8] [file ...]\n",
 				argv[0]);
 			exit(EXIT_FAILURE);
 		}
@@ -168,7 +168,7 @@ astprocess_cli(ast_t a)
 
 	static const char *boolsyms[][2] = {
 		[BS_ALPHA]   = {"F", "T"},
-		[BS_DIGITS]  = {"0", "1"},
+		[BS_BINARY]  = {"0", "1"},
 		[BS_SYMBOLS] = {"⊥", "⊤"},
 	};
 
@@ -210,7 +210,7 @@ astprocess_latex(ast_t a)
 {
 	static const char *boolsyms[][2] = {
 		[BS_ALPHA]   = {"F", "T"},
-		[BS_DIGITS]  = {"0", "1"},
+		[BS_BINARY]  = {"0", "1"},
 		[BS_SYMBOLS] = {"\\bot", "\\top"},
 	};
 
