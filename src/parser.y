@@ -42,23 +42,23 @@ extern const char *current_file;
 
 %%
 
-input
-	: %empty
+input:
+	  %empty
 	| input line {
 		if ($2.eqn != NULL)
 			astprocess($2);
 	}
 	;
 
-line
-	:     EOL { $$.eqn = NULL; }
+line:
+	      EOL { $$.eqn = NULL; }
 	| exp eol { $$ = $1; }
 	;
 
 eol: EOL | YYEOF;
 
-exp
-	: IDENT {
+exp:
+	  IDENT {
 		$$.eqn = xmalloc(sizeof(eqn_t));
 		$$.eqn->type = IDENT;
 		$$.eqn->ch = $1;
