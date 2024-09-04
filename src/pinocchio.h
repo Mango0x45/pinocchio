@@ -19,7 +19,12 @@ typedef struct {
 	uint64_t vars;
 } ast_t;
 
-void astprocess(ast_t);
+typedef struct {
+	size_t len, cap;
+	ast_t *buf;
+} asts_t;
+
+void astprocess(asts_t);
 void user_error(const char *, ...)
 #if __GNUC__
 	__attribute__((format(printf, 1, 2)))

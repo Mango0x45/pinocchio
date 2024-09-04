@@ -5,7 +5,7 @@ MAKEFLAGS = -j8
 CFLAGS = -O3 -march=native -mtune=native -pipe -Wall -Wextra -Wpedantic
 
 target = pinocchio
-objs = src/lexer.o src/main.o src/parser.o
+objs = src/lexer.o src/main.o src/parser.o src/wrapper.o
 
 all: $(target)
 $(target): $(objs)

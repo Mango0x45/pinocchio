@@ -25,6 +25,7 @@ extern const char *current_file;
 \<=>|⇔ { return EQUIV; }
 \(     { return OPAR;  }
 \)     { return CPAR;  }
+\|     { return '|';   }
 \n     { return EOL;   }
 
 [a-zA-Z] {

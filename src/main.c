@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <ctype.h>
 #include <err.h>
 #include <getopt.h>
@@ -9,13 +10,16 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 #include "lexer.h"
 #include "parser.h"
+#include "wrapper.h"
 
-#define MAXVARS (26 * 2)
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#define MAXVARS   (26 * 2)
+
+#define lengthof(x) ((sizeof(x) / sizeof(*(x))))
 
 #ifndef __has_builtin
 #	define __has_builtin(x) (0)
@@ -41,8 +45,8 @@ static tbl_style_t tflag = TS_UNSET;
 
 const char *current_file;
 
-static void astprocess_cli(ast_t);
-static void astprocess_latex(ast_t);
+static void astprocess_cli(asts_t);
+static void astprocess_latex(asts_t);
 static bool eqnsolve(eqn_t *, uint64_t, uint64_t);
 static int  eqnprint(eqn_t *);
 static void eqnfree(eqn_t *);
@@ -77,11 +81,11 @@ main(int argc, char **argv)
 	while ((opt = getopt_long(argc, argv, "b:t:", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'b':
-			if (strcmp(optarg, "alpha") == 0)
+			if (streq(optarg, "alpha"))
 				bflag = BS_ALPHA;
-			else if (strcmp(optarg, "binary") == 0)
+			else if (streq(optarg, "binary"))
 				bflag = BS_BINARY;
-			else if (strcmp(optarg, "symbols") == 0)
+			else if (streq(optarg, "symbols"))
 				bflag = BS_SYMBOLS;
 			else {
 				warnx("invalid bool style -- '%s'", optarg);
@@ -89,11 +93,11 @@ main(int argc, char **argv)
 			}
 			break;
 		case 't':
-			if (strcmp(optarg, "ascii") == 0)
+			if (streq(optarg, "ascii"))
 				tflag = TS_ASCII;
-			else if (strcmp(optarg, "latex") == 0)
+			else if (streq(optarg, "latex"))
 				tflag = TS_LATEX;
-			else if (strcmp(optarg, "utf8") == 0)
+			else if (streq(optarg, "utf8"))
 				tflag = TS_UTF8;
 			else {
 				warnx("invalid table style -- '%s'", optarg);
@@ -109,7 +113,7 @@ usage:
 	}
 
 	if (tflag == TS_UNSET) {
-		tflag = strcmp(nl_langinfo(CODESET), "UTF-8") == 0
+		tflag = streq(nl_langinfo(CODESET), "UTF-8")
 			? TS_UTF8 : TS_ASCII;
 	}
 
@@ -124,7 +128,7 @@ usage:
 			rv = EXIT_FAILURE;
 		}
 	} else for (int i = 0; i < argc; i++) {
-		if (strcmp(argv[i], "-") == 0)
+		if (streq(argv[i], "-"))
 			yyin = stdin;
 		else if ((yyin = fopen(argv[i], "r")) == NULL) {
 			warn("fopen: %s", argv[i]);
@@ -141,13 +145,16 @@ usage:
 }
 
 void
-astprocess(ast_t a)
+astprocess(asts_t as)
 {
-	(tflag == TS_LATEX ? astprocess_latex : astprocess_cli)(a);
+	(tflag == TS_LATEX ? astprocess_latex : astprocess_cli)(as);
+	for (size_t i = 0; i < as.len; i++)
+		eqnfree(as.buf[i].eqn);
+	free(as.buf);
 }
 
 void
-astprocess_cli(ast_t a)
+astprocess_cli(asts_t as)
 {
 	enum {
 		TBLVBAR,
@@ -174,39 +181,68 @@ astprocess_cli(ast_t a)
 
 	const char **tblsyms = tflag == TS_UTF8 ? tblsyms_utf8 : tblsyms_ascii;
 
+	uint64_t varmsk = as.buf[0].vars;
+	for (size_t i = 1; i < as.len; i++)
+		varmsk |= as.buf[i].vars;
+	int varcnt = popcnt(varmsk);
+
 	for (int i = 0; i < MAXVARS; i++) {
-		if ((a.vars & UINT64_C(1)<<i) != 0)
+		if ((varmsk & UINT64_C(1)<<i) != 0)
 			printf("%c ", i < 26 ? i + 'A' : i + 'a' - 26);
 	}
-	printf("%s ", tblsyms[TBLVBAR]);
-	int eqnw = eqnprint(a.eqn);
-	putchar('\n');
 
-	int varcnt = popcnt(a.vars);
+	int *eqnws = xmalloc(sizeof(*eqnws) * as.len);
+
+	for (size_t i = 0; i < as.len; i++) {
+		printf("%s ", tblsyms[TBLVBAR]);
+		eqnws[i] = eqnprint(as.buf[i].eqn);
+		if (i < as.len - 1) {
+			eqnws[i]++;
+			putchar(' ');
+		}
+	}
+	putchar('\n');
 
 	for (int i = 0; i < varcnt*2; i++)
 		fputs(tblsyms[TBLHBAR], stdout);
 	fputs(tblsyms[TBLCROS], stdout);
-	for (int i = 0; i <= eqnw; i++)
-		fputs(tblsyms[TBLHBAR], stdout);
+	for (size_t i = 0; i < as.len; i++) {
+		for (int j = 0; j <= eqnws[i]; j++)
+			fputs(tblsyms[TBLHBAR], stdout);
+		if (i < as.len - 1)
+			fputs(tblsyms[TBLCROS], stdout);
+	}
+
 	putchar('\n');
 
 	for (uint64_t msk = 0; msk < (UINT64_C(1) << varcnt); msk++) {
 		for (int i = varcnt; i --> 0;)
 			printf("%s ", boolsyms[bflag][(bool)(msk & UINT64_C(1)<<i)]);
-		int w = (eqnw & 1) == 0 ? eqnw / 2 : eqnw/2 + 1;
-		printf("%s %*s\n",
-			tblsyms[TBLVBAR],
-			/* The symbols are encoded as 3 UTF-8 codepoints */
-			w + (bflag == BS_SYMBOLS)*2,
-			boolsyms[bflag][eqnsolve(a.eqn, a.vars, msk)]);
+
+		for (size_t i = 0; i < as.len; i++) {
+			int eqnw = eqnws[i];
+			int w = (eqnw & 1) == 0 ? eqnw / 2 : eqnw/2 + 1;
+			printf("%s %*s",
+				tblsyms[TBLVBAR],
+				/* The symbols are encoded as 3 UTF-8 codepoints */
+				w + (bflag == BS_SYMBOLS)*2,
+				boolsyms[bflag][eqnsolve(as.buf[i].eqn, varmsk, msk)]);
+			if (i < as.len - 1) {
+				if ((eqnw & 1) != 0)
+					w--;
+				for (int i = 0; i < w; i++)
+					putchar(' ');
+			}
+		}
+
+		putchar('\n');
 	}
 
-	eqnfree(a.eqn);
+	free(eqnws);
 }
 
 void
-astprocess_latex(ast_t a)
+astprocess_latex(asts_t as)
 {
 	static const char *boolsyms[][2] = {
 		[BS_ALPHA]   = {"F", "T"},
@@ -215,33 +251,48 @@ astprocess_latex(ast_t a)
 	};
 
 	fputs("\\begin{displaymath}\n\t\\begin{array}{|", stdout);
-	int varcnt = popcnt(a.vars);
+
+	uint64_t varmsk = as.buf[0].vars;
+	for (size_t i = 1; i < as.len; i++)
+		varmsk |= as.buf[i].vars;
+	int varcnt = popcnt(varmsk);
+
 	for (int i = 0; i < varcnt; i++) {
-		if (i == 0)
-			putchar('c');
-		else
-			fputs(" c", stdout);
+		if (i > 0)
+			putchar(' ');
+		putchar('c');
 	}
-	fputs("|c|}\n\t\t", stdout);
+
+	for (size_t i = 0; i < as.len; i++)
+		fputs("|c", stdout);
+	fputs("|}\n\t\t", stdout);
 
 	for (int i = 0; i < MAXVARS; i++) {
-		if ((a.vars & UINT64_C(1)<<i) != 0)
+		if ((varmsk & UINT64_C(1)<<i) != 0)
 			printf("%c & ", i < 26 ? i + 'A' : i + 'a' - 26);
 	}
 
-	(void)eqnprint(a.eqn);
+	for (size_t i = 0; i < as.len; i++) {
+		(void)eqnprint(as.buf[i].eqn);
+		if (i < as.len - 1)
+			fputs(" & ", stdout);
+	}
 	puts("\\\\\n\t\t\\hline");
 
 	for (uint64_t msk = 0; msk < (UINT64_C(1) << varcnt); msk++) {
 		fputs("\t\t", stdout);
 		for (int i = varcnt; i --> 0;)
 			printf("%s & ", boolsyms[bflag][(bool)(msk & UINT64_C(1)<<i)]);
-		printf("%s\\\\\n", boolsyms[bflag][eqnsolve(a.eqn, a.vars, msk)]);
+
+		for (size_t i = 0; i < as.len; i++) {
+			printf("%s", boolsyms[bflag][eqnsolve(as.buf[i].eqn, varmsk, msk)]);
+			if (i < as.len - 1)
+				fputs(" & ", stdout);
+		}
+		fputs("\\\\\n", stdout);
 	}
 
 	puts("\t\\end{array}\n\\end{displaymath}");
-
-	eqnfree(a.eqn);
 }
 
 bool
@@ -252,6 +303,18 @@ eqnsolve(eqn_t *e, uint64_t vars, uint64_t msk)
 		int i = 0, bitnr = islower(e->ch) ? e->ch-'a'+26 : e->ch-'A';
 		for (int j = 0; j < bitnr; j++)
 			i += (bool)(vars & UINT64_C(1)<<j);
+
+		/* We have a bit of a problem, where if given the input
+		   ‘a && b | b && c’, when extracting the value of ‘c’ we
+		   actually extract the value of ‘a’ because MSK is backwards.
+
+		   This means that if we have 3 variables (a, b, and c) and we
+		   want to get the value of ‘c’, we need to extract bit 0 while
+		   for ‘a’ we need bit 2.  This tomfoolery here does the mapping
+		   of the ‘logical’ index (i.e. {0, 1, 2} for {a, b, c}) to the
+		   ‘real’ index (i.e. {2, 1, 0} for {a, b, c}). */
+		i = -i + popcnt(vars) - 1;
+
 		return msk & UINT64_C(1)<<i;
 	}
 	case OPAR:
