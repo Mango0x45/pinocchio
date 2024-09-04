@@ -7,7 +7,8 @@
 #include "lexer.h"
 #include "parser.h"
 
-static ast_t astmerge(int, ast_t, ast_t);
+static ast_t mkunop(int, ast_t);
+static ast_t mkbinop(int, ast_t, ast_t);
 static void *xmalloc(size_t);
 static void yyerror(const char *);
 
@@ -64,31 +65,31 @@ exp:
 		$$.eqn->ch = $1;
 		$$.vars = 1 << (islower($1) ? $1-'a'+26 : $1-'A');
 	}
-	| NOT exp {
-		eqn_t *node = xmalloc(sizeof(eqn_t));
-		node->type = NOT;
-		node->rhs  = $2.eqn;
-		$$.eqn = node;
-		$$.vars = $2.vars;
-	}
-	| OPAR exp CPAR {
-		eqn_t *node = xmalloc(sizeof(eqn_t));
-		node->type = OPAR;
-		node->rhs  = $2.eqn;
-		$$.eqn = node;
-		$$.vars = $2.vars;
-	}
-	| exp AND   exp { $$ = astmerge(AND,   $1, $3); }
-	| exp OR    exp { $$ = astmerge(OR,    $1, $3); }
-	| exp XOR   exp { $$ = astmerge(XOR,   $1, $3); }
-	| exp IMPL  exp { $$ = astmerge(IMPL,  $1, $3); }
-	| exp EQUIV exp { $$ = astmerge(EQUIV, $1, $3); }
+	| NOT exp       { $$ = mkunop(NOT,  $2);       }
+	| OPAR exp CPAR { $$ = mkunop(OPAR, $2);       }
+	| exp AND   exp { $$ = mkbinop(AND,   $1, $3); }
+	| exp OR    exp { $$ = mkbinop(OR,    $1, $3); }
+	| exp XOR   exp { $$ = mkbinop(XOR,   $1, $3); }
+	| exp IMPL  exp { $$ = mkbinop(IMPL,  $1, $3); }
+	| exp EQUIV exp { $$ = mkbinop(EQUIV, $1, $3); }
 	;
 
 %%
 
 ast_t
-astmerge(int op, ast_t lhs, ast_t rhs)
+mkunop(int op, ast_t rhs)
+{
+	ast_t a = {
+		.eqn  = xmalloc(sizeof(eqn_t)),
+		.vars = rhs.vars,
+	};
+	a.eqn->type = op;
+	a.eqn->rhs = rhs.eqn;
+	return a;
+}
+
+ast_t
+mkbinop(int op, ast_t lhs, ast_t rhs)
 {
 	ast_t a = {
 		.eqn  = xmalloc(sizeof(eqn_t)),
