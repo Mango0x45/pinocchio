@@ -49,8 +49,10 @@ input
 
 line
 	:     EOL { $$.eqn = NULL; }
-	| exp EOL { $$ = $1; }
+	| exp eol { $$ = $1; }
 	;
+
+eol: EOL | YYEOF;
 
 exp
 	: IDENT {
