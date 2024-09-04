@@ -19,8 +19,7 @@ typedef struct {
 	uint64_t vars;
 } ast_t;
 
-void astprocess_cli(ast_t);
-void astprocess_latex(ast_t);
+void astprocess(ast_t);
 void user_error(const char *, ...)
 #if __GNUC__
 	__attribute__((format(printf, 1, 2)))

@@ -22,18 +22,27 @@
 #endif
 
 typedef enum {
+	TS_UNSET = 0,
+	TS_ASCII,
+	TS_LATEX,
+	TS_UTF8,
+} tbl_style_t;
+
+typedef enum {
 	BS_ALPHA,
 	BS_DIGITS,
 	BS_SYMBOLS,
 } bool_style_t;
 
 static int rv;
-static bool interactive, utf8;
+static bool interactive;
 static bool_style_t bflag = BS_DIGITS;
+static tbl_style_t tflag = TS_UNSET;
 
-bool lflag;
 const char *current_file;
 
+static void astprocess_cli(ast_t);
+static void astprocess_latex(ast_t);
 static bool eqnsolve(eqn_t *, uint64_t, uint64_t);
 static int  eqnprint(eqn_t *);
 static void eqnfree(eqn_t *);
@@ -56,17 +65,16 @@ main(int argc, char **argv)
 {
 	argv[0] = basename(argv[0]);
 	setlocale(LC_ALL, "");
-	utf8 = strcmp(nl_langinfo(CODESET), "UTF-8") == 0;
 	interactive = isatty(STDIN_FILENO);
 
 	int opt;
 	static struct option longopts[] = {
-		{"bool-style", required_argument, 0, 'b'},
-		{"latex",      no_argument,       0, 'l'},
+		{"bool-style",  required_argument, 0, 'b'},
+		{"table-style", required_argument, 0, 't'},
 		{0},
 	};
 
-	while ((opt = getopt_long(argc, argv, "b:l", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "b:t:", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'b':
 			if (strcmp(optarg, "alpha") == 0)
@@ -80,15 +88,29 @@ main(int argc, char **argv)
 				goto usage;
 			}
 			break;
-		case 'l':
-			lflag = true;
+		case 't':
+			if (strcmp(optarg, "ascii") == 0)
+				tflag = TS_ASCII;
+			else if (strcmp(optarg, "latex") == 0)
+				tflag = TS_LATEX;
+			else if (strcmp(optarg, "utf8") == 0)
+				tflag = TS_UTF8;
+			else {
+				warnx("invalid table style -- '%s'", optarg);
+				goto usage;
+			}
 			break;
 		default:
 usage:
-			fprintf(stderr, "Usage: %s [-b alpha|digits|symbols] [-l] [file ...]\n",
+			fprintf(stderr, "Usage: %s [-b alpha|digits|symbols] [-t ascii|latex|utf8] [file ...]\n",
 				argv[0]);
 			exit(EXIT_FAILURE);
 		}
+	}
+
+	if (tflag == TS_UNSET) {
+		tflag = strcmp(nl_langinfo(CODESET), "UTF-8") == 0
+			? TS_UTF8 : TS_ASCII;
 	}
 
 	argc -= optind;
@@ -119,6 +141,12 @@ usage:
 }
 
 void
+astprocess(ast_t a)
+{
+	(tflag == TS_LATEX ? astprocess_latex : astprocess_cli)(a);
+}
+
+void
 astprocess_cli(ast_t a)
 {
 	enum {
@@ -144,7 +172,7 @@ astprocess_cli(ast_t a)
 		[BS_SYMBOLS] = {"⊥", "⊤"},
 	};
 
-	const char **tblsyms = utf8 ? tblsyms_utf8 : tblsyms_ascii;
+	const char **tblsyms = tflag == TS_UTF8 ? tblsyms_utf8 : tblsyms_ascii;
 
 	for (int i = 0; i < MAXVARS; i++) {
 		if ((a.vars & UINT64_C(1)<<i) != 0)
@@ -283,9 +311,10 @@ eqnprint(eqn_t *a)
 	};
 
 	const sym_t *symtab
-		= lflag ? symbols_latex
-		: utf8  ? symbols_utf8
-		:         symbols_ascii;
+		= tflag == TS_LATEX ? symbols_latex
+		: tflag == TS_UTF8  ? symbols_utf8
+		:                     symbols_ascii
+		;
 
 	switch (a->type) {
 	case IDENT:
