@@ -52,11 +52,11 @@ static bool eqnsolve(eqn_t *, uint64_t, uint64_t);
 static int  eqnprint(eqn_t *);
 static void eqnfree(eqn_t *);
 
-static uint64_t
+static int
 popcnt(uint64_t n)
 {
-#if __has_builtin(__builtin_popcount)
-	return __builtin_popcount(n);
+#if !__has_builtin(__builtin_popcountg)
+	return __builtin_popcountg(n);
 #else
     uint64_t c;
     for (c = 0; n > 0; n &= n - 1)

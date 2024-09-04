@@ -1,6 +1,7 @@
 %{
 #include <ctype.h>
 #include <err.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -80,7 +81,7 @@ expr:
 		$$.eqn = xmalloc(sizeof(eqn_t));
 		$$.eqn->type = IDENT;
 		$$.eqn->ch = $1;
-		$$.vars = 1 << (islower($1) ? $1-'a'+26 : $1-'A');
+		$$.vars = UINT64_C(1) << (islower($1) ? $1-'a'+26 : $1-'A');
 	}
 	| NOT expr        { $$ = mkunop(NOT,  $2);       }
 	| OPAR expr CPAR  { $$ = mkunop(OPAR, $2);       }
