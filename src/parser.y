@@ -56,7 +56,7 @@ exp
 	: IDENT {
 		$$.eqn = xmalloc(sizeof(eqn_t));
 		$$.eqn->type = IDENT;
-		$$.eqn->ch  = $1;
+		$$.eqn->ch = $1;
 		$$.vars = 1 << (islower($1) ? $1-'a'+26 : $1-'A');
 	}
 	| NOT exp {
