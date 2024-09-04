@@ -289,7 +289,7 @@ eqnprint(eqn_t *a)
 		[NOT   - NOT] = {"¬", 1},
 		[OR    - NOT] = {"∨", 1},
 		[AND   - NOT] = {"∧", 1},
-		[XOR   - NOT] = {"⊻", 1},
+		[XOR   - NOT] = {"⊕", 1},
 		[IMPL  - NOT] = {"⇒", 1},
 		[EQUIV - NOT] = {"⇔", 1},
 	};
