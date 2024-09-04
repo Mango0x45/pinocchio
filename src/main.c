@@ -99,8 +99,7 @@ astprocess(ast_t a)
 	const char **symtab = utf8 ? symbols_utf8 : symbols_ascii;
 
 	for (int i = 0; i < MAXVARS; i++) {
-		bool set = a.vars & UINT64_C(1)<<i;
-		if (set)
+		if ((a.vars & UINT64_C(1)<<i) != 0)
 			printf("%c ", i < 26 ? i + 'A' : i + 'a' - 26);
 	}
 	printf("%s ", symtab[TBLVBAR]);
@@ -117,13 +116,12 @@ astprocess(ast_t a)
 	putchar('\n');
 
 	for (uint64_t msk = 0; msk < (UINT64_C(1) << varcnt); msk++) {
-		for (int i = varcnt; i --> 0;) {
-			bool bit = msk & 1<<i;
-			printf("%d ", bit);
-		}
-		printf("%s ", symtab[TBLVBAR]);
-		int w = (eqnw & 1) == 0 ? eqnw / 2 : eqnw/2 + 1;
-		printf("% *d\n", w, eqnsolve(a.eqn, a.vars, msk));
+		for (int i = varcnt; i --> 0;)
+			printf("%d ", (bool)(msk & UINT64_C(1)<<i));
+		printf("%s % *d\n",
+			symtab[TBLVBAR],
+			(eqnw & 1) == 0 ? eqnw / 2 : eqnw/2 + 1,
+			eqnsolve(a.eqn, a.vars, msk));
 	}
 
 	eqnfree(a.eqn);
