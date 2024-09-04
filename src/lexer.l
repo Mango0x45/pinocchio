@@ -17,15 +17,16 @@ extern const char *current_file;
 
 %%
 
-¬|!     { return NOT;   }
-∧|&&    { return AND;   }
-∨|\|\|  { return OR;    }
-⊻|⊕|XOR { return XOR;   }
-⇒|=>    { return IMPL;  }
-\<=>|⇔  { return EQUIV; }
-\(      { return OPAR;  }
-\)      { return CPAR;  }
-\n      { return EOL;   }
+¬|!    { return NOT;   }
+∧|&&   { return AND;   }
+∨|\|\| { return OR;    }
+⊻|⊕|~  { return XOR;   }
+⇒|=>   { return IMPL;  }
+\<=>|⇔ { return EQUIV; }
+\(     { return OPAR;  }
+\)     { return CPAR;  }
+\n     { return EOL;   }
+
 [a-zA-Z] {
 	yylval.ch = *yytext;
 	return IDENT;
