@@ -21,8 +21,15 @@
 #	define __has_builtin(x) (0)
 #endif
 
+typedef enum {
+	BS_ALPHA,
+	BS_DIGITS,
+	BS_SYMBOLS,
+} bool_style_t;
+
 static int rv;
 static bool interactive, utf8;
+static bool_style_t bflag = BS_DIGITS;
 
 bool lflag;
 const char *current_file;
@@ -54,17 +61,32 @@ main(int argc, char **argv)
 
 	int opt;
 	static struct option longopts[] = {
-		{"latex", no_argument, 0, 'l'},
+		{"bool-style", required_argument, 0, 'b'},
+		{"latex",      no_argument,       0, 'l'},
 		{0},
 	};
 
-	while ((opt = getopt_long(argc, argv, "l", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "b:l", longopts, NULL)) != -1) {
 		switch (opt) {
+		case 'b':
+			if (strcmp(optarg, "alpha") == 0)
+				bflag = BS_ALPHA;
+			else if (strcmp(optarg, "digits") == 0)
+				bflag = BS_DIGITS;
+			else if (strcmp(optarg, "symbols") == 0)
+				bflag = BS_SYMBOLS;
+			else {
+				warnx("invalid bool style -- '%s'", optarg);
+				goto usage;
+			}
+			break;
 		case 'l':
 			lflag = true;
 			break;
 		default:
-			fprintf(stderr, "Usage: %s [-l] [file ...]\n", argv[0]);
+usage:
+			fprintf(stderr, "Usage: %s [-b alpha|digits|symbols] [-l] [file ...]\n",
+				argv[0]);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -105,43 +127,51 @@ astprocess_cli(ast_t a)
 		TBLCROS,
 	};
 
-	static const char *symbols_utf8[] = {
+	static const char *tblsyms_utf8[] = {
 		[TBLVBAR] = "│",
 		[TBLHBAR] = "─",
 		[TBLCROS] = "┼",
 	};
-	static const char *symbols_ascii[] = {
+	static const char *tblsyms_ascii[] = {
 		[TBLVBAR] = "|",
 		[TBLHBAR] = "-",
 		[TBLCROS] = "+",
 	};
 
-	const char **symtab = utf8 ? symbols_utf8 : symbols_ascii;
+	static const char *boolsyms[][2] = {
+		[BS_ALPHA]   = {"F", "T"},
+		[BS_DIGITS]  = {"0", "1"},
+		[BS_SYMBOLS] = {"⊥", "⊤"},
+	};
+
+	const char **tblsyms = utf8 ? tblsyms_utf8 : tblsyms_ascii;
 
 	for (int i = 0; i < MAXVARS; i++) {
 		if ((a.vars & UINT64_C(1)<<i) != 0)
 			printf("%c ", i < 26 ? i + 'A' : i + 'a' - 26);
 	}
-	printf("%s ", symtab[TBLVBAR]);
+	printf("%s ", tblsyms[TBLVBAR]);
 	int eqnw = eqnprint(a.eqn);
 	putchar('\n');
 
 	int varcnt = popcnt(a.vars);
 
 	for (int i = 0; i < varcnt*2; i++)
-		fputs(symtab[TBLHBAR], stdout);
-	fputs(symtab[TBLCROS], stdout);
+		fputs(tblsyms[TBLHBAR], stdout);
+	fputs(tblsyms[TBLCROS], stdout);
 	for (int i = 0; i <= eqnw; i++)
-		fputs(symtab[TBLHBAR], stdout);
+		fputs(tblsyms[TBLHBAR], stdout);
 	putchar('\n');
 
 	for (uint64_t msk = 0; msk < (UINT64_C(1) << varcnt); msk++) {
 		for (int i = varcnt; i --> 0;)
-			printf("%d ", (bool)(msk & UINT64_C(1)<<i));
-		printf("%s % *d\n",
-			symtab[TBLVBAR],
-			(eqnw & 1) == 0 ? eqnw / 2 : eqnw/2 + 1,
-			eqnsolve(a.eqn, a.vars, msk));
+			printf("%s ", boolsyms[bflag][(bool)(msk & UINT64_C(1)<<i)]);
+		int w = (eqnw & 1) == 0 ? eqnw / 2 : eqnw/2 + 1;
+		printf("%s %*s\n",
+			tblsyms[TBLVBAR],
+			/* The symbols are encoded as 3 UTF-8 codepoints */
+			w + (bflag == BS_SYMBOLS)*2,
+			boolsyms[bflag][eqnsolve(a.eqn, a.vars, msk)]);
 	}
 
 	eqnfree(a.eqn);
@@ -150,6 +180,12 @@ astprocess_cli(ast_t a)
 void
 astprocess_latex(ast_t a)
 {
+	static const char *boolsyms[][2] = {
+		[BS_ALPHA]   = {"F", "T"},
+		[BS_DIGITS]  = {"0", "1"},
+		[BS_SYMBOLS] = {"\\bot", "\\top"},
+	};
+
 	fputs("\\begin{displaymath}\n\t\\begin{array}{|", stdout);
 	int varcnt = popcnt(a.vars);
 	for (int i = 0; i < varcnt; i++) {
@@ -171,8 +207,8 @@ astprocess_latex(ast_t a)
 	for (uint64_t msk = 0; msk < (UINT64_C(1) << varcnt); msk++) {
 		fputs("\t\t", stdout);
 		for (int i = varcnt; i --> 0;)
-			printf("%d & ", (bool)(msk & UINT64_C(1)<<i));
-		printf("%d\\\\\n", eqnsolve(a.eqn, a.vars, msk));
+			printf("%s & ", boolsyms[bflag][(bool)(msk & UINT64_C(1)<<i)]);
+		printf("%s\\\\\n", boolsyms[bflag][eqnsolve(a.eqn, a.vars, msk)]);
 	}
 
 	puts("\t\\end{array}\n\\end{displaymath}");
