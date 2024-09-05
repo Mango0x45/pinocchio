@@ -23,7 +23,7 @@ $S/lexer.c $S/lexer.h: $S/lexer.l
 	flex --header-file=$S/lexer.h -o $S/lexer.c $<
 
 $S/parser.c $S/parser.h: $S/parser.y
-	bison -dvo $S/parser.c $<
+	bison -Wall -Wcounterexamples -dvo $S/parser.c $<
 
 clean:
 	rm -f $$(git ls-files -oi --exclude-standard)
