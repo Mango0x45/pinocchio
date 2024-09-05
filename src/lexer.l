@@ -43,13 +43,16 @@ ws [ \t]
 
 {ws}+ ;
 
+	/* Throw an error on an invalid token.  When in interactive mode we
+	   should slurp up all data on the current line after reporting the
+	   error so that lexing/parsing doesn’t continue right after the
+	   offending token but instead on the next line typed by the user. */
 . {
 	user_error("%s:%d: Unrecognized character ‘%c’",
 		current_file, yylineno, *yytext);
 	BEGIN(error);
 	return YYerror;
 }
-
 <error>.* { BEGIN(0); }
 
 %%
