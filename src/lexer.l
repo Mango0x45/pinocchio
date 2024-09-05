@@ -1,8 +1,3 @@
-%option noinput
-%option nounput
-%option noyywrap
-%option yylineno
-
 %{
 #include <err.h>
 #include <stdlib.h>
@@ -14,6 +9,11 @@
 
 extern const char *current_file;
 %}
+
+%option noinput
+%option nounput
+%option noyywrap
+%option yylineno
 
 ws [ \t]
 
