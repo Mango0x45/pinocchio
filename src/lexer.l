@@ -10,10 +10,9 @@
 extern const char *current_file;
 %}
 
-%option noinput
-%option nounput
-%option noyywrap
 %option yylineno
+%option nodefault
+%option noinput nounput noyywrap
 
 ws [ \t]
 
