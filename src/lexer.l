@@ -5,7 +5,18 @@
 #include "parser.h"
 #include "pinocchio.h"
 
-#define YY_USER_ACTION yylloc.first_line = yylloc.last_line = yylineno;
+#define YY_USER_ACTION                                                         \
+	do {                                                                       \
+		yylloc.first_column = yylloc.last_column;                              \
+		yylloc.first_line = yylloc.last_line;                                  \
+		for (int i = 0; i < yyleng; i++) {                                     \
+			if (yytext[i] == '\n') {                                           \
+				yylloc.last_column = 1;                                        \
+				yylloc.last_line++;                                            \
+			} else                                                             \
+				yylloc.last_column++;                                          \
+		}                                                                      \
+	} while (0);
 
 extern const char *current_file;
 %}

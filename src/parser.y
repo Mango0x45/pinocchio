@@ -124,5 +124,6 @@ mkbinop(yytoken_kind_t op, ast_t lhs, ast_t rhs)
 void
 yyerror(const char *s)
 {
-	user_error("%s:%d: %s", current_file, yylloc.first_line, s);
+	user_error("%s:%d:%d: %s", current_file, yylloc.first_line,
+		yylloc.first_column, s);
 }
