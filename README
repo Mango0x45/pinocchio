@@ -52,6 +52,19 @@ The list of operators are as follows:
 	Implication  │ ⇒, =>
 	Equivalence  │ ⇔, <=>
 
+Sometimes if your query is rather long, you may want to break it up
+across multiple lines.  To do this you can make use of line-continuation
+by prefixing each continued line with a backslash.  The following two
+inputs are identical.
+
+	p ∧ ¬q | ¬p ∧ q | (¬p ∨ ¬q) ⇒ (p ∧ ¬q) ∨ (¬p ∧ q)
+
+	     p ∧ ¬q
+	\ | ¬p ∧  q
+	\ | (¬p ∨ ¬q) ⇒
+	\     (p ∧ ¬q) ∨ (¬p ∧ q)
+
+
 By default generated tables express boolean values as the binary digits 0
 and 1, and are drawn using ASCII characters or Unicode characters if the
 user is in a UTF-8 locale.  This can all be customized with use of the
