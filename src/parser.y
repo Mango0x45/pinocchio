@@ -10,7 +10,7 @@
 #include "wrapper.h"
 
 static ast_t mkunop(int, ast_t);
-static ast_t mkbinop(int, ast_t, ast_t);
+static ast_t mkbinop(yytoken_kind_t, ast_t, ast_t);
 static asts_t pushast(asts_t, ast_t);
 static void yyerror(const char *);
 
@@ -106,7 +106,7 @@ mkunop(int op, ast_t rhs)
 }
 
 ast_t
-mkbinop(int op, ast_t lhs, ast_t rhs)
+mkbinop(yytoken_kind_t op, ast_t lhs, ast_t rhs)
 {
 	ast_t a = {
 		.eqn  = xmalloc(sizeof(eqn_t)),
