@@ -40,10 +40,10 @@ typedef enum {
 } bool_style_t;
 
 static int rv;
-static bool interactive;
 static bool_style_t bflag = BS_BINARY;
 static tbl_style_t tflag = TS_UNSET;
 
+bool interactive;
 const char *current_file;
 
 static void astprocess_cli(asts_t);
@@ -70,7 +70,6 @@ main(int argc, char **argv)
 {
 	argv[0] = basename(argv[0]);
 	setlocale(LC_ALL, "");
-	interactive = isatty(STDIN_FILENO);
 
 	int opt;
 	const char *sflag = NULL;
@@ -130,6 +129,14 @@ usage:
 
 	if (sflag != NULL && argc != 0)
 		goto usage;
+
+	/* We’re considered to be interactive if stdin is a TTY (meaning it’s
+	   not a pipe or something) and no files have been specified on the
+	   command-line.  We should also take care to check for -s, because
+	   that implies non-interactive usage.  We intentionally consider
+	   ‘interactive’ usage with the command-line argument ‘-’ to not be
+	   interactive. */
+	interactive = sflag == NULL && argc == 0 && isatty(STDIN_FILENO);
 
 	if (argc == 0) {
 		if (sflag != NULL &&

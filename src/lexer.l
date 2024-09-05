@@ -1,9 +1,16 @@
 %{
 #include <err.h>
+#include <stdbool.h>
 #include <stdlib.h>
 
 #include "parser.h"
 #include "pinocchio.h"
+
+#define YY_USER_INIT                                                           \
+	do {                                                                       \
+		if (!interactive)                                                      \
+			BEGIN(linecont);                                                   \
+	} while (false);
 
 #define YY_USER_ACTION                                                         \
 	do {                                                                       \
@@ -16,8 +23,9 @@
 			} else                                                             \
 				yylloc.last_column++;                                          \
 		}                                                                      \
-	} while (0);
+	} while (false);
 
+extern bool interactive;
 extern const char *current_file;
 %}
 
@@ -28,6 +36,7 @@ extern const char *current_file;
 ws [ \t]
 
 %x error
+%s linecont
 
 %%
 
@@ -43,8 +52,11 @@ ws [ \t]
 \\     { return '\\';  }
 \n     { return EOL;   }
 
-	/* Allow line-continuation when the newline is suffixed by a backslash */
-\n{ws}*\\ ;
+	/* Allow line-continuation when the newline is suffixed by a
+	   backslash, but not in interactive mode!  Interactive usage should
+	   have this functionality disabled so that you get instant feedback
+	   after hitting the enter key. */
+<linecont>\n{ws}*\\ ;
 
 [a-zA-Z] {
 	yylval.ch = *yytext;
