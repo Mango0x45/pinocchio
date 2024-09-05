@@ -52,6 +52,6 @@ ws [ \t]
 	BEGIN(error);
 	return YYerror;
 }
-<error>.* { BEGIN(0); }
+<error>.*|\n { BEGIN(0); }
 
 %%
