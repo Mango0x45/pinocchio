@@ -11,6 +11,7 @@
 
 static ast_t mkunop(int, ast_t);
 static ast_t mkbinop(int, ast_t, ast_t);
+static asts_t pushast(asts_t, ast_t);
 static void yyerror(const char *);
 
 extern const char *current_file;
@@ -42,7 +43,7 @@ extern const char *current_file;
 %left AND
 %left XOR
 %left IMPL EQUIV
-%nonassoc NOT
+%precedence NOT
 
 %%
 
@@ -66,14 +67,9 @@ exprs:
 		$$.buf = xmalloc(sizeof(*$$.buf) * $$.cap);
 		$$.buf[0] = $1;
 	}
-	| exprs '|' expr {
-		$$ = $1;
-		if ($$.len == $$.cap) {
-			$$.cap *= 2;
-			$$.buf = xrealloc($$.buf, sizeof(*$$.buf) * $$.cap);
-		}
-		$$.buf[$$.len++] = $3;
-	}
+	| exprs      '|' expr { $$ = pushast($1, $3); }
+	| exprs cont '|' expr { $$ = pushast($1, $4); }
+	| exprs '|' cont expr { $$ = pushast($1, $4); }
 	;
 
 expr:
@@ -92,6 +88,7 @@ expr:
 	| expr EQUIV expr { $$ = mkbinop(EQUIV, $1, $3); }
 	;
 
+cont: EOL '\\';
 eol: EOL | YYEOF;
 
 %%
@@ -119,6 +116,17 @@ mkbinop(int op, ast_t lhs, ast_t rhs)
 	a.eqn->lhs = lhs.eqn;
 	a.eqn->rhs = rhs.eqn;
 	return a;
+}
+
+asts_t
+pushast(asts_t as, ast_t a)
+{
+	if (as.len == as.cap) {
+		as.cap *= 2;
+		as.buf = xrealloc(as.buf, sizeof(*as.buf) * as.cap);
+	}
+	as.buf[as.len++] = a;
+	return as;
 }
 
 void

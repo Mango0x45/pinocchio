@@ -26,6 +26,7 @@ extern const char *current_file;
 \(     { return OPAR;  }
 \)     { return CPAR;  }
 \|     { return '|';   }
+\\     { return '\\';  }
 \n     { return EOL;   }
 
 [a-zA-Z] {
