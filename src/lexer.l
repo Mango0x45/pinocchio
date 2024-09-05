@@ -29,7 +29,6 @@ extern bool interactive;
 extern const char *current_file;
 %}
 
-%option yylineno
 %option nodefault
 %option noinput nounput noyywrap
 
@@ -70,8 +69,8 @@ ws [ \t]
 	   error so that lexing/parsing doesn’t continue right after the
 	   offending token but instead on the next line typed by the user. */
 . {
-	user_error("%s:%d: Unrecognized character ‘%c’",
-		current_file, yylineno, *yytext);
+	user_error("%s:%d:%d: Unrecognized character ‘%c’",
+		current_file, yylloc.first_line, yylloc.first_column, *yytext);
 	BEGIN(error);
 	return YYerror;
 }
