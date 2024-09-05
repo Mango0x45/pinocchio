@@ -11,7 +11,6 @@
 
 static ast_t mkunop(int, ast_t);
 static ast_t mkbinop(yytoken_kind_t, ast_t, ast_t);
-static asts_t pushast(asts_t, ast_t);
 static void yyerror(const char *);
 
 extern const char *current_file;
@@ -67,9 +66,14 @@ exprs:
 		$$.buf = xmalloc(sizeof(*$$.buf) * $$.cap);
 		$$.buf[0] = $1;
 	}
-	| exprs      '|' expr { $$ = pushast($1, $3); }
-	| exprs cont '|' expr { $$ = pushast($1, $4); }
-	| exprs '|' cont expr { $$ = pushast($1, $4); }
+	| exprs '|' expr {
+		$$ = $1;
+		if ($$.len == $$.cap) {
+			$$.cap *= 2;
+			$$.buf = xrealloc($$.buf, sizeof(*$$.buf) * $$.cap);
+		}
+		$$.buf[$$.len++] = $3;
+	}
 	;
 
 expr:
@@ -79,8 +83,8 @@ expr:
 		$$.eqn->ch = $1;
 		$$.vars = UINT64_C(1) << (islower($1) ? $1-'a'+26 : $1-'A');
 	}
-	| NOT expr        { $$ = mkunop(NOT,  $2);       }
-	| OPAR expr CPAR  { $$ = mkunop(OPAR, $2);       }
+	| NOT expr        { $$ = mkunop(NOT,  $2);     }
+	| OPAR expr CPAR  { $$ = mkunop(OPAR, $2);     }
 	| expr AND   expr { $$ = mkbinop(AND,   $1, $3); }
 	| expr OR    expr { $$ = mkbinop(OR,    $1, $3); }
 	| expr XOR   expr { $$ = mkbinop(XOR,   $1, $3); }
@@ -88,7 +92,6 @@ expr:
 	| expr EQUIV expr { $$ = mkbinop(EQUIV, $1, $3); }
 	;
 
-cont: EOL '\\';
 eol: EOL | YYEOF;
 
 %%
@@ -116,17 +119,6 @@ mkbinop(yytoken_kind_t op, ast_t lhs, ast_t rhs)
 	a.eqn->lhs = lhs.eqn;
 	a.eqn->rhs = rhs.eqn;
 	return a;
-}
-
-asts_t
-pushast(asts_t as, ast_t a)
-{
-	if (as.len == as.cap) {
-		as.cap *= 2;
-		as.buf = xrealloc(as.buf, sizeof(*as.buf) * as.cap);
-	}
-	as.buf[as.len++] = a;
-	return as;
 }
 
 void

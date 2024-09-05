@@ -15,6 +15,8 @@
 extern const char *current_file;
 %}
 
+ws [ \t]
+
 %%
 
 ¬|!    { return NOT;   }
@@ -29,12 +31,15 @@ extern const char *current_file;
 \\     { return '\\';  }
 \n     { return EOL;   }
 
+	/* Allow line-continuation when the newline is suffixed by a backslash */
+\n{ws}*\\ ;
+
 [a-zA-Z] {
 	yylval.ch = *yytext;
 	return IDENT;
 }
 
-[ \t]+ ;
+{ws}+ ;
 
 . {
 	user_error("%s:%d: Unrecognized character ‘%c’",
