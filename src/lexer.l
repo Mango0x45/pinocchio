@@ -17,6 +17,8 @@ extern const char *current_file;
 
 ws [ \t]
 
+%x error
+
 %%
 
 ¬|!    { return NOT;   }
@@ -44,6 +46,10 @@ ws [ \t]
 . {
 	user_error("%s:%d: Unrecognized character ‘%c’",
 		current_file, yylineno, *yytext);
+	BEGIN(error);
+	return YYerror;
 }
+
+<error>.* { BEGIN(0); }
 
 %%
