@@ -20,7 +20,7 @@ $S/main.o:   $S/main.c   $S/lexer.h $S/parser.h $S/pinocchio.h $S/wrapper.h
 $S/parser.o: $S/parser.c $S/lexer.h $S/parser.h $S/pinocchio.h $S/wrapper.h
 
 $S/lexer.c $S/lexer.h: $S/lexer.l
-	flex --header-file=$S/lexer.h -o $S/lexer.c $<
+	flex --warn --header-file=$S/lexer.h -o $S/lexer.c $<
 
 $S/parser.c $S/parser.h: $S/parser.y
 	bison -Wall -Wcounterexamples -dvo $S/parser.c $<
