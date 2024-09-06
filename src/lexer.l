@@ -12,19 +12,18 @@
 			BEGIN(linecont);                                                   \
 	} while (false);
 
-#define LOC_STEP                                                               \
+#define YY_USER_ACTION                                                         \
 	do {                                                                       \
 		yylloc.first_line   = yylloc.last_line;                                \
 		yylloc.first_column = yylloc.last_column;                              \
-	} while (false)
+		yylloc.last_column += yyleng;                                          \
+	} while (false);
 
-#define LOC_LINE                                                               \
+#define LOCNL                                                                  \
 	do {                                                                       \
 		yylloc.last_line++;                                                    \
 		yylloc.last_column = 1;                                                \
-	} while (false)
-
-#define YY_USER_ACTION yylloc.last_column += yyleng;
+	} while (false)                                                            \
 
 extern bool interactive;
 extern const char *current_file;
@@ -40,10 +39,6 @@ ws [ \t]
 
 %%
 
-%{
-LOC_STEP;
-%}
-
 ¬|!    { return NOT;   }
 ∧|&&   { return AND;   }
 ∨|\|\| { return OR;    }
@@ -56,7 +51,7 @@ LOC_STEP;
 \\     { return '\\';  }
 
 \n {
-	LOC_LINE;
+	LOCNL;
 	return EOL;
 }
 
@@ -65,7 +60,7 @@ LOC_STEP;
 	   have this functionality disabled so that you get instant feedback
 	   after hitting the enter key. */
 <linecont>\n{ws}*\\ {
-	LOC_LINE;
+	LOCNL;
 	yylloc.last_column = yyleng;
 }
 
@@ -74,18 +69,26 @@ LOC_STEP;
 	return IDENT;
 }
 
-{ws}+ { LOC_STEP; }
+{ws}+ ;
 
 	/* Throw an error on an invalid token.  When in interactive mode we
 	   should slurp up all data on the current line after reporting the
 	   error so that lexing/parsing doesn’t continue right after the
 	   offending token but instead on the next line typed by the user. */
 . {
-	user_error("%s:%d:%d: Unrecognized character ‘%c’",
-		current_file, yylloc.first_line, yylloc.first_column, *yytext);
+	char ch = *yytext;
+	if (ch == '&') {
+		user_error("%s:%d:%d: Unrecognized character ‘%c’, did you mean ‘%c%c’?",
+			current_file, yylloc.first_line, yylloc.first_column, ch, ch, ch);
+	} else {
+		user_error("%s:%d:%d: Unrecognized character ‘%c’",
+			current_file, yylloc.first_line, yylloc.first_column, ch);
+	}
 	BEGIN(error);
 	return YYerror;
 }
-<error>.*|\n { BEGIN(0); }
+
+<error>.*   {        BEGIN(0); }
+<error>.*\n { LOCNL; BEGIN(0); }
 
 %%
