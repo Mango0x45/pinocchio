@@ -12,18 +12,19 @@
 			BEGIN(linecont);                                                   \
 	} while (false);
 
-#define YY_USER_ACTION                                                         \
+#define LOC_STEP                                                               \
 	do {                                                                       \
+		yylloc.first_line   = yylloc.last_line;                                \
 		yylloc.first_column = yylloc.last_column;                              \
-		yylloc.first_line = yylloc.last_line;                                  \
-		for (int i = 0; i < yyleng; i++) {                                     \
-			if (yytext[i] == '\n') {                                           \
-				yylloc.last_column = 1;                                        \
-				yylloc.last_line++;                                            \
-			} else                                                             \
-				yylloc.last_column++;                                          \
-		}                                                                      \
-	} while (false);
+	} while (false)
+
+#define LOC_LINE                                                               \
+	do {                                                                       \
+		yylloc.last_line++;                                                    \
+		yylloc.last_column = 1;                                                \
+	} while (false)
+
+#define YY_USER_ACTION yylloc.last_column += yyleng;
 
 extern bool interactive;
 extern const char *current_file;
@@ -39,6 +40,10 @@ ws [ \t]
 
 %%
 
+%{
+LOC_STEP;
+%}
+
 ¬|!    { return NOT;   }
 ∧|&&   { return AND;   }
 ∨|\|\| { return OR;    }
@@ -49,20 +54,27 @@ ws [ \t]
 \)     { return CPAR;  }
 \|     { return '|';   }
 \\     { return '\\';  }
-\n     { return EOL;   }
+
+\n {
+	LOC_LINE;
+	return EOL;
+}
 
 	/* Allow line-continuation when the newline is suffixed by a
 	   backslash, but not in interactive mode!  Interactive usage should
 	   have this functionality disabled so that you get instant feedback
 	   after hitting the enter key. */
-<linecont>\n{ws}*\\ ;
+<linecont>\n{ws}*\\ {
+	LOC_LINE;
+	yylloc.last_column = yyleng;
+}
 
 [a-zA-Z] {
 	yylval.ch = *yytext;
 	return IDENT;
 }
 
-{ws}+ ;
+{ws}+ { LOC_STEP; }
 
 	/* Throw an error on an invalid token.  When in interactive mode we
 	   should slurp up all data on the current line after reporting the
