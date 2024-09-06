@@ -25,7 +25,7 @@
 		yylloc.last_column = 1;                                                \
 	} while (false)                                                            \
 
-extern bool interactive;
+extern bool interactive, utf8;
 extern const char *current_file;
 %}
 
@@ -77,12 +77,27 @@ ws [ \t]
 	   offending token but instead on the next line typed by the user. */
 . {
 	char ch = *yytext;
+
+	static const char *quotes[][2] = {
+		{"`", "'"},
+		{"‘", "’"},
+	};
+
+	const char *lquot = quotes[utf8][0],
+	           *rquot = quotes[utf8][1];
+
 	if (ch == '&') {
-		user_error("%s:%d:%d: Unrecognized character ‘%c’, did you mean ‘%c%c’?",
-			current_file, yylloc.first_line, yylloc.first_column, ch, ch, ch);
+		user_error("%s:%d:%d: Unrecognized character %s&%s, did you mean %s&&%s?",
+			current_file, yylloc.first_line, yylloc.first_column,
+			lquot, rquot, lquot, rquot);
+	} else if (ch == '^') {
+		user_error("%s:%d:%d: Unrecognized character %s^%s, did you mean %s~%s?",
+			current_file, yylloc.first_line, yylloc.first_column,
+			lquot, rquot, lquot, rquot);
 	} else {
-		user_error("%s:%d:%d: Unrecognized character ‘%c’",
-			current_file, yylloc.first_line, yylloc.first_column, ch);
+		user_error("%s:%d:%d: Unrecognized character %s%c%s",
+			current_file, yylloc.first_line, yylloc.first_column,
+			lquot, ch, rquot);
 	}
 	BEGIN(error);
 	return YYerror;

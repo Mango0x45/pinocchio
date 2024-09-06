@@ -43,7 +43,7 @@ static int rv;
 static bool_style_t bflag = BS_BINARY;
 static tbl_style_t tflag = TS_UNSET;
 
-bool interactive;
+bool interactive, utf8;
 const char *current_file;
 
 static void astprocess_cli(asts_t);
@@ -119,10 +119,9 @@ usage:
 		}
 	}
 
-	if (tflag == TS_UNSET) {
-		tflag = streq(nl_langinfo(CODESET), "UTF-8")
-			? TS_UTF8 : TS_ASCII;
-	}
+	utf8 = streq(nl_langinfo(CODESET), "UTF-8");
+	if (tflag == TS_UNSET)
+		tflag = utf8 ? TS_UTF8 : TS_ASCII;
 
 	argc -= optind;
 	argv += optind;
