@@ -25,6 +25,9 @@
 		yylloc.last_column = 1;                                                \
 	} while (false)                                                            \
 
+/* Silence warnings in the generated lexer */
+#pragma GCC diagnostic ignored "-Wsign-compare"
+
 extern bool interactive, utf8;
 extern const char *current_file;
 %}
