@@ -55,7 +55,7 @@ static void eqnfree(eqn_t *);
 static int
 popcnt(uint64_t n)
 {
-#if !__has_builtin(__builtin_popcountg)
+#if __has_builtin(__builtin_popcountg)
 	return __builtin_popcountg(n);
 #else
     uint64_t c;
